@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Authenticode / PE Signature Inspector — check an .exe's digital signature</title>
+<meta name="description" content="Inspect a Windows .exe/.dll/.sys file's Authenticode digital signature entirely in your browser: signer certificate, program name, timestamp, and whether the file has been modified since it was signed. Nothing uploaded to a server.">
+<link rel="stylesheet" href="https://gazetheeupon.github.io/shared-assets/theme.css?v=2">
+<link rel="canonical" href="https://gazetheeupon.github.io/authenticode-inspector/">
+<meta property="og:title" content="Authenticode / PE Signature Inspector">
+<meta property="og:description" content="Check who signed a Windows .exe/.dll, whether it's been modified since signing, and whether it carries a trusted timestamp — entirely in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gazetheeupon.github.io/authenticode-inspector/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Authenticode / PE Signature Inspector">
+<meta name="twitter:description" content="Check who signed a Windows .exe/.dll, whether it's been modified since signing, and whether it carries a trusted timestamp — entirely in your browser.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Authenticode / PE Signature Inspector",
+  "url": "https://gazetheeupon.github.io/authenticode-inspector/",
+  "description": "Inspect a Windows .exe/.dll/.sys file's Authenticode digital signature entirely in your browser: signer certificate, program name, timestamp, and whether the file has been modified since it was signed.",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Any (runs in web browser)",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<style>
+  :root{--bg:#0f1720;--card:#1a2532;--text:#e8edf2;--muted:#93a3b3;--accent:#4fa8ff;--border:#2a3745;--warn:#ffcf8a;--good:#7be0a8;--bad:#ff8080;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;}
+  header{padding:2rem 1rem 1rem;text-align:center;}
+  h1{font-size:1.5rem;margin:0 0 .4rem;}
+  p.sub{color:var(--muted);margin:0 auto;max-width:680px;}
+  main{max-width:780px;margin:0 auto;padding:1.5rem 1rem 3rem;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.2rem;}
+  .dropzone{border:2px dashed var(--border);border-radius:10px;padding:2rem 1rem;text-align:center;cursor:pointer;transition:border-color .15s;}
+  .dropzone.drag{border-color:var(--accent);}
+  .dropzone input{display:none;}
+  .dropzone .hint{color:var(--muted);font-size:.9rem;margin-top:.4rem;}
+  .fname{font-size:.9rem;color:var(--text);margin-top:.6rem;word-break:break-all;text-align:center;}
+  #status{color:var(--muted);font-size:.9rem;margin-top:.8rem;min-height:1.2em;text-align:center;}
+  #status.warn{color:var(--bad);}
+  h2{font-size:1rem;margin:0 0 .8rem;color:var(--text);}
+  h3{font-size:.9rem;margin:0 0 .5rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
+  table.kv{width:100%;border-collapse:collapse;font-size:.85rem;}
+  table.kv td{padding:.35rem .5rem;border-bottom:1px solid var(--border);vertical-align:top;}
+  table.kv tr:last-child td{border-bottom:none;}
+  table.kv td:first-child{color:var(--muted);width:38%;white-space:nowrap;}
+  table.kv td code{word-break:break-all;}
+  code{background:#0f1720;padding:.1rem .35rem;border-radius:4px;font-size:.85em;}
+  .banner{border-radius:10px;padding:.9rem 1rem;font-size:.9rem;margin-bottom:1rem;border:1px solid;}
+  .banner.good{background:rgba(123,224,168,.08);border-color:var(--good);color:var(--good);}
+  .banner.bad{background:rgba(255,128,128,.08);border-color:var(--bad);color:var(--bad);}
+  .banner.neutral{background:rgba(147,163,179,.08);border-color:var(--border);color:var(--text);}
+  .banner strong{display:block;margin-bottom:.2rem;font-size:.95rem;}
+  .cert-block{border:1px solid var(--border);border-radius:8px;padding:.9rem 1rem;margin-bottom:.8rem;}
+  .cert-block:last-child{margin-bottom:0;}
+  .cert-block .badge{display:inline-block;background:var(--accent);color:#04121f;font-size:.7rem;font-weight:700;padding:.1rem .5rem;border-radius:999px;margin-left:.4rem;vertical-align:middle;}
+  .section{margin-bottom:1.4rem;}
+  .section:last-child{margin-bottom:0;}
+  .privacy{font-size:.85rem;color:var(--muted);}
+  .privacy strong{color:var(--text);}
+  .scope-list{font-size:.85rem;color:var(--muted);margin:.5rem 0 0;padding-left:1.2rem;}
+  .scope-list li{margin-bottom:.3rem;}
+  .hidden{display:none;}
+  #errorCard{border-color:var(--bad);}
+  #errorCard p{color:var(--bad);margin:0;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Authenticode / PE Signature Inspector</h1>
+  <p class="sub">Drop a Windows <code>.exe</code>, <code>.dll</code>, or <code>.sys</code> file to see who signed it, whether it's been modified since signing, and whether it carries a trusted timestamp &mdash; parsed entirely in your browser.</p>
+</header>
+<main>
+  <div class="card">
+    <div class="dropzone" id="dropzone">
+      <div>Drop a signed (or unsigned) PE file here, or click to choose</div>
+      <div class="hint">.exe, .dll, .sys &mdash; nothing is uploaded anywhere</div>
+      <input type="file" id="fileInput" accept=".exe,.dll,.sys,.ocx,.cpl,.scr">
+    </div>
+    <div class="fname" id="fname"></div>
+    <div id="status"></div>
+  </div>
+
+  <div class="card hidden" id="errorCard"><p id="errorText"></p></div>
+
+  <div class="card hidden" id="resultsCard">
+    <h2>Signature summary</h2>
+    <div id="digestBanner"></div>
+
+    <div class="section" id="signerSection">
+      <h3>Signed by</h3>
+      <table class="kv" id="signerTable"></table>
+    </div>
+
+    <div class="section" id="opusSection">
+      <h3>Signature claims (not independently verified)</h3>
+      <table class="kv" id="opusTable"></table>
+    </div>
+
+    <div class="section" id="timestampSection">
+      <h3>Timestamp</h3>
+      <div id="timestampBody"></div>
+    </div>
+
+    <div class="section" id="certsSection">
+      <h3>Embedded certificates</h3>
+      <div id="certsBody"></div>
+    </div>
+
+    <div class="section" id="warningsSection" style="display:none;">
+      <h3>Notes</h3>
+      <ul id="warningsList" class="scope-list"></ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="privacy"><strong>How this works:</strong> this page reads the Windows PE header of your file, locates the appended Authenticode signature (a PKCS#7 block containing the signer's certificate and a declared file hash), and independently recomputes that hash from the file's current bytes using the same exclusion rules Windows itself uses. If the two hashes match, the file hasn't changed since it was signed. All of this happens in your browser tab; nothing you drop here is ever sent anywhere.</p>
+    <p class="privacy" style="margin-top:.8rem;"><strong>What this tool deliberately does NOT do:</strong></p>
+    <ul class="scope-list">
+      <li>It does not validate the certificate chain against Windows' trusted roots &mdash; it just shows you who the signature claims to be from. A perfectly "valid-looking" signature can still be from a certificate nobody trusts (including a self-signed one).</li>
+      <li>It does not check certificate revocation (CRL/OCSP). A revoked certificate will still show up here as a normal-looking signer.</li>
+      <li>It does not verify the cryptographic signature itself (that the signature bytes were really produced by the signer's private key) &mdash; only that the declared file hash matches the file's current bytes.</li>
+    </ul>
+    <p class="privacy" style="margin-top:.8rem;">For a real trust decision, use Windows' own <code>signtool verify</code> or right-click &rarr; Properties &rarr; Digital Signatures on the file itself.</p>
+  </div>
+
+  <div class="card faq">
+    <h2>Troubleshooting</h2>
+    <details><summary>It says "not signed" but Windows shows a signature</summary>
+      <p>Double check you dropped the actual signed file and not a copy made after signing (some build/packaging/antivirus tools rewrite files in ways that strip the signature). If Windows Explorer's Digital Signatures tab shows nothing either, the file genuinely isn't signed.</p>
+    </details>
+    <details><summary>"Recomputed hash does not match" &mdash; does that mean malware?</summary>
+      <p>It means the file's bytes are different from what was signed &mdash; not necessarily malicious. This is exactly what a corrupted download, a disk error, or a genuinely tampered file all look like. Re-download the file from its original source and check again before drawing conclusions.</p>
+    </details>
+    <details><summary>Why does it say "no timestamp"?</summary>
+      <p>Without an embedded RFC3161 (or legacy) timestamp, Windows treats the signature as invalid once the signer's certificate expires &mdash; even if the file hasn't changed. A timestamp lets the signature keep being treated as valid for that point in time, indefinitely.</p>
+    </details>
+  </div>
+
+  <div id="ad-slot"></div>
+</main>
+<script src="authenticode-parser.js"></script>
+<script src="app.js"></script>
+<script defer src="https://gazetheeupon.github.io/shared-assets/site.js"></script>
+</body>
+</html>
