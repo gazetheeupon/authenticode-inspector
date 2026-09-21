@@ -68,6 +68,38 @@
   #errorCard{border-color:var(--bad);}
   #errorCard p{color:var(--bad);margin:0;}
 </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "It says \"not signed\" but Windows shows a signature",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Double check you dropped the actual signed file and not a copy made after signing (some build/packaging/antivirus tools rewrite files in ways that strip the signature). If Windows Explorer's Digital Signatures tab shows nothing either, the file genuinely isn't signed."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "\"Recomputed hash does not match\" \u2014 does that mean malware?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "It means the file's bytes are different from what was signed \u2014 not necessarily malicious. This is exactly what a corrupted download, a disk error, or a genuinely tampered file all look like. Re-download the file from its original source and check again before drawing conclusions."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why does it say \"no timestamp\"?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Without an embedded RFC3161 (or legacy) timestamp, Windows treats the signature as invalid once the signer's certificate expires \u2014 even if the file hasn't changed. A timestamp lets the signature keep being treated as valid for that point in time, indefinitely."
+      }
+    }
+  ]
+}
+</script>
 </head>
 <body>
 <header>
